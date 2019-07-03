@@ -32,11 +32,14 @@ POC = True
 # 保存的文件名
 html_name = time.strftime("%Y%m%d%H%M%S", time.localtime())
 
+# ping探测
+PING = True
+
 # shodan
 shodan_api = ''
 
 # VT接口
-virustotal_api = 'xxxxxxxxxxxxxxxxxxxxxxxxxx'
+virustotal_api = ''
 
 COOKIE = {'Cookie': 'Vxscan 1.0'}
 

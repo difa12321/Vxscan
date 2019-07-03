@@ -65,7 +65,8 @@ def geoip(ip):
             city = ''
         return '{} {} {}'.format(country, site, city)
     except:
-        return 'None'
+        pass
+    return 'None'
 
 
 def reverse_domain(host):
@@ -77,7 +78,8 @@ def reverse_domain(host):
         header.update({'Referer': 'https://www.yougetsignal.com/tools/web-sites-on-web-server/'})
         header.update({'origin': 'https://www.yougetsignal.com'})
         try:
-            r = requests.post('https://domains.yougetsignal.com/domains.php', headers=header, data=data, timeout=5)
+            r = requests.post('https://domains.yougetsignal.com/domains.php', headers=header, data=data, timeout=5,
+                              verify=False)
             text = json.loads(r.text)
             domain = tldextract.extract(host)
             for i in text.get('domainArray'):
@@ -87,34 +89,40 @@ def reverse_domain(host):
                         result.append(url)
                     elif re.search(r'\d+\.\d+\.\d+\.\d+', url):
                         result.append(url)
-        except (TypeError, json.decoder.JSONDecodeError):
-            r = requests.get('http://api.hackertarget.com/reverseiplookup/?q={}'.format(host), headers=get_ua(),
-                             timeout=5)
-            if '<html>' not in r.text:
-                text = r.text
-                for _ in text.split('\n'):
-                    if _:
-                        result.append(_)
-            else:
-                result = []
+        except:
+            try:
+                r = requests.get('http://api.hackertarget.com/reverseiplookup/?q={}'.format(host), headers=get_ua(),
+                                 timeout=4, verify=False)
+                if '<html>' not in r.text:
+                    text = r.text
+                    for _ in text.split('\n'):
+                        if _:
+                            result.append(_)
+                else:
+                    result = []
+            except:
+                pass
         return result
 
 
 def virustotal(host):
     # VT接口，主要用来查询PDNS，绕过CDN
-    vtotal = Virustotal(virustotal_api)
-    if re.search(r'\d+\.\d+\.\d+\.\d+', host):
-        return ['None']
-    resp = vtotal.domain_report(host)
-    history_ip = []
-    
-    if resp.get('status_code') != 403:
-        for i in resp.get('json_resp').get('resolutions'):
-            address = i.get('ip_address')
-            timeout = i.get('last_resolved')
-            if iscdn(address):
-                history_ip.append(address + ' : ' + timeout)
-        return history_ip[-10:]
+    if virustotal_api:
+        vtotal = Virustotal(virustotal_api)
+        if re.search(r'\d+\.\d+\.\d+\.\d+', host):
+            return ['None']
+        resp = vtotal.domain_report(host)
+        history_ip = []
+        
+        if resp.get('status_code') != 403:
+            for i in resp.get('json_resp').get('resolutions'):
+                address = i.get('ip_address')
+                timeout = i.get('last_resolved')
+                if iscdn(address):
+                    history_ip.append(address + ' : ' + timeout)
+            return history_ip[-10:]
+        else:
+            return ['None']
     else:
         return ['None']
 
@@ -148,7 +156,7 @@ def start(url):
             result = checkwaf(r.headers, r.text[:10000])
             if result == 'NoWAF':
                 r = requests.get(
-                    url + '/index.php?id=1 ' + payload, headers=get_ua(), timeout=TIMEOUT)
+                    url + '/index.php?id=1 ' + payload, headers=get_ua(), timeout=TIMEOUT, verify=False)
                 result = checkwaf(r.headers, r.text[:10000])
         except Exception as e:
             webinfo = {}
@@ -199,6 +207,8 @@ def start(url):
         osname = 'None'
     sys.stdout.write(bcolors.RED + "OS：\n" + bcolors.ENDC)
     sys.stdout.write(bcolors.OKGREEN + '[+] {}\n'.format(osname) + bcolors.ENDC)
+    if not address:
+        address = 'None'
     data = {
         url.netloc: {
             'WAF': result,
